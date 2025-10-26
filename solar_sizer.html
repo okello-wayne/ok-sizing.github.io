@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ok-Sizing Tool for Embedded Systems</title>
+<style>
+  body {background:#0f172a;color:#f8fafc;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Inter","Roboto";margin:0;padding:2rem;line-height:1.5;}
+  h1,h2{margin:0 0 .5rem;}
+  p{color:#94a3b8;font-size:.9rem;margin:0 0 1rem;}
+  table{width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:1rem;}
+  th,td{border-bottom:1px solid #334155;padding:.4rem .3rem;text-align:left;}
+  input,select{width:100%;background:#1e2538;border:1px solid #334155;border-radius:.3rem;color:#f8fafc;font-size:.8rem;padding:.3rem .4rem;}
+  button{cursor:pointer;border:0;border-radius:.4rem;font-size:.8rem;padding:.4rem .7rem;margin-right:.3rem;background:#38bdf8;color:#0f172a;font-weight:500;}
+  button.danger{background:#ef4444;color:#fff;}
+  .card{background:#1e2538;border:1px solid #334155;border-radius:.6rem;padding:1rem;margin-bottom:2rem;}
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.8rem;}
+  .resultbox{background:#0f172a;border:1px solid #334155;border-radius:.4rem;padding:.6rem .7rem;margin-top:.6rem;}
+  .resultbox span.label{display:block;color:#94a3b8;font-size:.7rem;text-transform:uppercase;}
+</style>
+</head>
+<body>
+<h1>Ok-Sizing Tool</h1>
+<p>Compute energy, battery, and panel sizing for embedded or IoT systems. Includes pack configuration, BMS, charge controller, and recommended solar sizing.</p>
+
+<div class="card">
+  <h2>1️⃣ Loads / Components</h2>
+  <table id="tbl">
+    <thead><tr><th>Component</th><th>V</th><th>I sleep (mA)</th><th>I awake (mA)</th><th></th></tr></thead>
+    <tbody id="body">
+      <tr><td><input value="Pi Zero 2W"></td><td><input type="number" value="5"></td><td><input type="number" value="45"></td><td><input type="number" value="350"></td><td><button class="danger" onclick="this.closest('tr').remove()">x</button></td></tr>
+      <tr><td><input value="ESP32"></td><td><input type="number" value="3.3"></td><td><input type="number" value="15"></td><td><input type="number" value="260"></td><td><button class="danger" onclick="this.closest('tr').remove()">x</button></td></tr>
+      <tr><td><input value="Rain Sensor"></td><td><input type="number" value="3.3"></td><td><input type="number" value="15"></td><td><input type="number" value="15"></td><td><button class="danger" onclick="this.closest('tr').remove()">x</button></td></tr>
+      <tr><td><input value="Mic Module"></td><td><input type="number" value="5"></td><td><input type="number" value="0"></td><td><input type="number" value="2.5"></td><td><button class="danger" onclick="this.closest('tr').remove()">x</button></td></tr>
+    </tbody>
+  </table>
+  <button onclick="addRow()">+ Add Component</button>
+</div>
+
+<div class="card">
+  <h2>2️⃣ Duty Cycle / System Settings</h2>
+  <div class="grid2">
+    <div><label>Cycle length (min)</label><input id="cycle" type="number" value="10"></div>
+    <div><label>Awake per cycle (min)</label><input id="awake" type="number" value="2"></div>
+    <div><label>Sleep per cycle (min)</label><input id="sleep" type="number" value="8"></div>
+    <div><label>Battery Bus Voltage (V)</label><input id="Vbus" type="number" value="12"></div>
+    <div><label>Depth of Discharge (%)</label><input id="DoD" type="number" value="80"></div>
+    <div><label>Battery Efficiency (%)</label><input id="Beff" type="number" value="95"></div>
+    <div><label>Autonomy (days no sun)</label><input id="days" type="number" value="3"></div>
+    <div><label>Sun Hours / day</label><input id="sun" type="number" value="7"></div>
+    <div><label>System Eff. PV→load (%)</label><input id="chain" type="number" value="65"></div>
+  </div>
+
+  <h2 style="margin-top:1rem;">🔋 Battery Type</h2>
+  <div class="grid2">
+    <div>
+      <label>Select Battery Chemistry</label>
+      <select id="battType">
+        <option value="3.2">LiFePO₄ (3.2 V/cell)</option>
+        <option value="3.7">Li-ion (3.7 V/cell)</option>
+        <option value="2.0">Lead-acid (2.0 V/cell)</option>
+      </select>
+    </div>
+    <div>
+      <label>Single-cell Capacity (Ah)</label>
+      <input id="cellAh" type="number" value="3.2">
+    </div>
+  </div>
+  <br>
+  <button onclick="calculate()">Calculate</button>
+</div>
+
+<div class="card">
+  <h2>📊 Results</h2>
+  <div id="results"></div>
+</div>
+
+<script>
+function addRow(){
+  const tr=document.createElement("tr");
+  tr.innerHTML=`<td><input placeholder="Component"></td>
+    <td><input type="number" placeholder="V"></td>
+    <td><input type="number" placeholder="mA sleep"></td>
+    <td><input type="number" placeholder="mA awake"></td>
+    <td><button class="danger" onclick="this.closest('tr').remove()">x</button></td>`;
+  document.getElementById("body").appendChild(tr);
+}
+
+function getRows(){
+  return [...document.querySelectorAll("#body tr")].map(r=>{
+    const t=r.querySelectorAll("input");
+    return {V:+t[1].value||0,Is:+t[2].value||0,Ia:+t[3].value||0,name:t[0].value||"Component"};
+  });
+}
+
+function calcWhPerHr(V,Is,Ia,awakeFrac,sleepFrac){
+  const Paw=V*(Ia/1000);
+  const Psl=V*(Is/1000);
+  return Paw*awakeFrac + Psl*sleepFrac;
+}
+
+function calculate(){
+  const rows=getRows();
+  const cycle=+val("cycle"),awake=+val("awake"),sleep=+val("sleep");
+  const Vbus=+val("Vbus"),DoD=+val("DoD")/100,Beff=+val("Beff")/100,days=+val("days");
+  const sun=+val("sun"),chain=+val("chain")/100;
+  const cellV=+val("battType"),cellAh=+val("cellAh");
+  function val(id){return document.getElementById(id).value;}
+
+  // Corrected duty-cycle weighting
+  const totalCycle = awake + sleep;
+  const awakeFrac = awake / totalCycle;
+  const sleepFrac = sleep / totalCycle;
+
+  let WhHrSleep=0,WhHrNoSleep=0;
+  rows.forEach(r=>{
+    WhHrSleep+=calcWhPerHr(r.V,r.Is,r.Ia,awakeFrac,sleepFrac);
+    WhHrNoSleep+=r.V*(r.Ia/1000);
+  });
+
+  const dailyWhSleep=WhHrSleep*24;
+  const dailyWhNoSleep=WhHrNoSleep*24;
+  const ratio=((1 - dailyWhSleep/dailyWhNoSleep)*100).toFixed(1);
+
+  const usableFrac=DoD*Beff;
+  const totalWhSleep=dailyWhSleep*days;
+  const battAhSleep=totalWhSleep/(Vbus*usableFrac);
+
+  // Battery configuration
+  const seriesCells=Math.ceil(Vbus/cellV);
+  const parallelStrings=Math.ceil(battAhSleep/cellAh);
+  const totalCells=seriesCells*parallelStrings;
+
+  const pvWhDay=dailyWhSleep/chain;
+  const panelW=pvWhDay/sun;
+  const panelWrec=panelW*2; // 2× oversizing
+
+  // Estimate load current for BMS sizing
+  const avgLoadA=dailyWhSleep/(Vbus*24);
+  const bmsRating=Math.max(10,Math.ceil(avgLoadA*20)); // 20× load current, min 10 A
+
+  // Recommend charge controller
+  const ctrlType = panelWrec > 20 ? "MPPT" : "PWM";
+  const ctrlRatingA = Math.ceil(panelWrec / Vbus * 1.3); // 30% margin
+  const ctrlNote = ctrlType==="MPPT"
+    ? "Best for higher efficiency with ≥ 20 W panels."
+    : "Sufficient for ≤ 20 W systems.";
+
+  document.getElementById("results").innerHTML=`
+  <div class="resultbox"><span class="label">Average Load (Sleep Mode)</span>${WhHrSleep.toFixed(3)} Wh/hr • ${dailyWhSleep.toFixed(2)} Wh/day</div>
+  <div class="resultbox"><span class="label">Average Load (No-Sleep Mode)</span>${WhHrNoSleep.toFixed(3)} Wh/hr • ${dailyWhNoSleep.toFixed(2)} Wh/day</div>
+  <div class="resultbox"><span class="label">Energy Savings from Sleep Mode</span>${ratio}% reduction in daily consumption</div>
+  <div class="resultbox"><span class="label">Battery Requirement (Sleep Mode)</span>${battAhSleep.toFixed(2)} Ah @ ${Vbus} V → ${(battAhSleep*Vbus).toFixed(1)} Wh stored</div>
+  <div class="resultbox"><span class="label">Battery Pack Configuration</span>${seriesCells} cells in series × ${parallelStrings} parallel = <b>${totalCells}</b> cells total<br>(${cellV} V / ${cellAh} Ah each)</div>
+  <div class="resultbox"><span class="label">Recommended BMS</span><b>${seriesCells}S LiFePO₄ BMS</b> rated ≥ ${bmsRating} A continuous, with balancing.</div>
+  <div class="resultbox"><span class="label">Recommended Charge Controller</span><b>${ctrlType}</b> type rated ≥ ${ctrlRatingA} A for ${Vbus.toFixed(1)} V system.<br><i>${ctrlNote}</i></div>
+  <div class="resultbox"><span class="label">Solar Panel</span>Calculated: ${panelW.toFixed(2)} W • Recommended (2×): <b>${panelWrec.toFixed(1)} W panel</b></div>`;
+}
+</script>
+</body>
+</html>
