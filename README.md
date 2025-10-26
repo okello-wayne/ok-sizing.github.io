@@ -1,5 +1,4 @@
-# 🌞 Solar Sizing Tool for Embedded & IoT Systems
-
+# 🌞 Ok-Sizing Tool 
 This web-based calculator helps estimate **energy, battery, and solar panel requirements** for small embedded or IoT systems such as sensor nodes, environmental monitors, or smart farming devices.
 
 It computes:
