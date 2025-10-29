@@ -54,8 +54,6 @@ For each component:
 P_awake = V × (I_awake / 1000)
 P_sleep = V × (I_sleep / 1000)
 
-yaml
-Copy code
 
 Power is in watts. All components’ awake and sleep powers are summed.
 
@@ -68,30 +66,20 @@ If your cycle is 10 min total (2 min awake, 8 min sleep):
 f_awake = 2 / 10 = 0.2
 f_sleep = 8 / 10 = 0.8
 
-perl
-Copy code
-
 Average power for each component:
 
 P_avg(component) = P_awake × f_awake + P_sleep × f_sleep
 
-perl
-Copy code
 
 Then total system power:
 
 P_avg(total) = sum of all P_avg(component)
 
-mathematica
-Copy code
 
 That’s reported as **Average Load (Sleep Mode)**.  
 For “No-Sleep Mode,” everything is assumed awake:
 
 P_nosleep = Σ(V × I_awake / 1000)
-
-yaml
-Copy code
 
 ---
 
@@ -101,16 +89,10 @@ Multiply average power by 24 hours:
 
 Wh/day = (Wh/hr) × 24
 
-makefile
-Copy code
-
 Example:
 
 0.613 × 24 = 14.72 Wh/day
 2.670 × 24 = 64.08 Wh/day
-
-yaml
-Copy code
 
 ---
 
@@ -118,15 +100,10 @@ Copy code
 
 Savings % = (1 − (Sleep Wh/day ÷ No-Sleep Wh/day)) × 100
 
-makefile
-Copy code
-
 Example:
 
 (1 − 14.72 / 64.08) × 100 = 77.0 %
 
-yaml
-Copy code
 
 So sleep mode cuts daily energy by about 77 %.
 
@@ -146,24 +123,15 @@ E_total = Wh/day × D
 usable_fraction = DoD × Efficiency
 Battery_Ah = E_total ÷ (Vbus × usable_fraction)
 
-makefile
-Copy code
-
 Example:
 
 E_total = 14.72 × 2 = 29.44 Wh
 usable_fraction = 0.8 × 0.95 = 0.76
 Battery_Ah = 29.44 ÷ (12 × 0.76) = 4.84 Ah
 
-yaml
-Copy code
-
 Stored energy:
 
 4.84 Ah × 12 V = 58.1 Wh
-
-yaml
-Copy code
 
 ---
 
@@ -174,9 +142,6 @@ Each LiFePO₄ cell = 3.2 V, 3.2 Ah.
 Series cells:
 
 N_series = ceil(Vbus ÷ Vcell) = ceil(12.8 ÷ 3.2) = 4
-
-yaml
-Copy code
 
 Parallel strings:
 
@@ -189,8 +154,6 @@ Result:
 
 4S2P → 8 cells total
 
-yaml
-Copy code
 
 This means:
 - 4 cells in series → 12.8 V nominal
@@ -205,9 +168,6 @@ Panel Wh/day = Load Wh/day ÷ System Efficiency
 Panel W (ideal) = Panel Wh/day ÷ Sun Hours/day
 Panel W (recommended) = 2 × Panel W (ideal)
 
-java
-Copy code
-
 Example:
 
 If daily load = 14.72 Wh, system efficiency = 65 %, sun hours = 7 h:
@@ -215,9 +175,6 @@ If daily load = 14.72 Wh, system efficiency = 65 %, sun hours = 7 h:
 Panel Wh/day = 14.72 ÷ 0.65 = 22.65 Wh/day
 Panel W (ideal) = 22.65 ÷ 7 = 3.24 W
 Panel W (recommended) = 2 × 3.24 = 6.5 W
-
-yaml
-Copy code
 
 So a **7–10 W panel** is safe in practice.
 
